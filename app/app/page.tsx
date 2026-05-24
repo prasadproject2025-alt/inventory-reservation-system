@@ -57,7 +57,8 @@ export default function HomePage() {
       });
 
       if (res.status === 409) {
-        setError('Not enough stock available for that warehouse.');
+        setError('Not enough stock available for that warehouse (409).');
+        await loadProducts();
         return;
       }
       if (!res.ok) {

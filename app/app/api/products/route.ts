@@ -1,17 +1,30 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../lib/prisma';
-import { cleanupExpiredReservations } from '../../lib/reservations';
+import prisma from '@/lib/prisma';
+import { cleanupExpiredReservations } from '@/lib/reservations';
 
 export async function GET() {
-  const inventories = await prisma.$transaction(async (tx: any) => {
+  const inventories = await prisma.$transaction(async (tx) => {
     await cleanupExpiredReservations(tx);
-
     return tx.inventory.findMany({
       include: { product: true, warehouse: true },
     });
   });
 
-  const productsMap = new Map<string, any>();
+  const productsMap = new Map<
+    string,
+    {
+      id: number;
+      sku: string;
+      name: string;
+      warehouses: Array<{
+        warehouseId: number;
+        warehouseName: string;
+        total: number;
+        reserved: number;
+        available: number;
+      }>;
+    }
+  >();
 
   for (const inv of inventories) {
     const pid = String(inv.product.id);
@@ -23,7 +36,7 @@ export async function GET() {
         warehouses: [],
       });
     }
-    productsMap.get(pid).warehouses.push({
+    productsMap.get(pid)!.warehouses.push({
       warehouseId: inv.warehouse.id,
       warehouseName: inv.warehouse.name,
       total: inv.total,
@@ -32,6 +45,5 @@ export async function GET() {
     });
   }
 
-  const products = Array.from(productsMap.values());
-  return NextResponse.json({ products });
+  return NextResponse.json({ products: Array.from(productsMap.values()) });
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 
@@ -29,9 +30,8 @@ export default function ReservationPage() {
   }, [now, reservation]);
 
   const humanTime = useMemo(() => {
-    const seconds = expiresIn;
-    const minutes = Math.floor(seconds / 60);
-    const remSeconds = seconds % 60;
+    const minutes = Math.floor(expiresIn / 60);
+    const remSeconds = expiresIn % 60;
     return `${minutes}:${remSeconds.toString().padStart(2, '0')}`;
   }, [expiresIn]);
 
@@ -48,8 +48,8 @@ export default function ReservationPage() {
       }
       const data = await res.json();
       setReservation(data);
-    } catch (err: any) {
-      setError(err?.message || 'Unable to load reservation');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load reservation');
     } finally {
       setLoading(false);
     }
@@ -63,6 +63,13 @@ export default function ReservationPage() {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!reservation || reservation.status !== 'PENDING' || expiresIn > 0) {
+      return;
+    }
+    void loadReservation();
+  }, [expiresIn, reservation?.status]);
 
   const handleAction = async (action: 'confirm' | 'release') => {
     if (!reservationId) return;
@@ -82,8 +89,8 @@ export default function ReservationPage() {
       } else {
         setMessage(action === 'confirm' ? 'Purchase confirmed.' : 'Reservation released.');
       }
-    } catch (err: any) {
-      setError(err?.message || 'Unable to complete action');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to complete action');
     } finally {
       setActionLoading(false);
       await loadReservation();
@@ -93,8 +100,16 @@ export default function ReservationPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-          <h1 className="text-3xl font-semibold">Reservation details</h1>
+        <Link href="/" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+          ← Back to products
+        </Link>
+
+        <div className="mt-6 rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+          <h1 className="text-3xl font-semibold">Checkout</h1>
+          <p className="mt-2 text-slate-600">
+            Complete payment before the timer expires, or cancel to release the hold.
+          </p>
+
           {loading ? (
             <p className="mt-4 text-slate-600">Loading reservation...</p>
           ) : error ? (
@@ -128,7 +143,12 @@ export default function ReservationPage() {
 
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                 <p className="text-sm text-slate-500">Time until expiry</p>
-                <p className="mt-2 text-3xl font-semibold">{humanTime}</p>
+                <p className="mt-2 text-3xl font-semibold tabular-nums">
+                  {reservation.status === 'PENDING' ? humanTime : '—'}
+                </p>
+                {reservation.status === 'PENDING' && expiresIn <= 0 ? (
+                  <p className="mt-2 text-sm text-red-700">This reservation has expired.</p>
+                ) : null}
               </div>
 
               {message ? (

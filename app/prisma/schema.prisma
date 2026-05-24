@@ -68,3 +68,14 @@ enum ReservationStatus {
   CONFIRMED
   RELEASED
 }
+
+// Stores prior API responses for Idempotency-Key retries (24h TTL).
+model IdempotencyRecord {
+  key        String   @id
+  statusCode Int
+  body       Json
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([expiresAt])
+}
