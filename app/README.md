@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Inventory Reservation System
 
-## Getting Started
+A small Next.js inventory reservation app built with Prisma and Postgres.
 
-First, run the development server:
+## What is implemented
+
+- Product listing with available stock per warehouse.
+- Reservation creation with atomic stock reservation and 409 handling.
+- Reservation detail page with live countdown, confirm, and cancel.
+- Reservation confirmation with expiry detection and 410 handling.
+- Lazy expiry cleanup on product reads and reservation lookups.
+
+## Run locally
+
+1. Install dependencies
+
+```bash
+npm install
+```
+
+2. Set the database URL
+
+Copy `.env` from the template and set `DATABASE_URL` to your Postgres database.
+
+3. Push the Prisma schema and seed sample data
+
+```bash
+npx prisma db push
+npm run seed
+```
+
+4. Start the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Expiry mechanism
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This app uses lazy cleanup on web requests:
 
-## Learn More
+- `GET /api/products` runs expired reservation cleanup before returning inventory.
+- `GET /api/reservations/:id` also checks and releases expired reservations.
 
-To learn more about Next.js, take a look at the following resources:
+That keeps stock accurate without requiring a separate worker or scheduler.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Concurrency and correctness
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Reservation creation uses an atomic SQL update inside a transaction:
 
-## Deploy on Vercel
+- it increments `Inventory.reserved` only when `(total - reserved) >= quantity`
+- if two requests race for the last unit, only one succeeds and the other returns `409`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Confirmation also updates inventory atomically and validates the reservation state.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes and trade-offs
+
+- The app currently reserves a fixed quantity of `1` per click for simplicity.
+- Expired reservations are cleaned lazily on read; a production version could also add a cron worker for more timely cleanup.
+- Idempotency is not implemented in this version.

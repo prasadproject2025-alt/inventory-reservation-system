@@ -4,7 +4,7 @@ import { releaseReservation } from '../../../../lib/reservations';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
-  const reservation = await prisma.$transaction(async (tx) => {
+  const reservation = await prisma.$transaction(async (tx: any) => {
     const r = await tx.reservation.findUnique({ where: { id } });
     if (!r) return null;
 
@@ -25,7 +25,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await releaseReservation(tx, reservation);
     });
 

@@ -3,7 +3,7 @@ import prisma from '../../lib/prisma';
 import { cleanupExpiredReservations } from '../../lib/reservations';
 
 export async function GET() {
-  const inventories = await prisma.$transaction(async (tx) => {
+  const inventories = await prisma.$transaction(async (tx: any) => {
     await cleanupExpiredReservations(tx);
 
     return tx.inventory.findMany({
