@@ -1,4 +1,4 @@
-import type { Reservation } from '../app/generated/prisma';
+import type { Reservation } from '../app/generated/prisma/client';
 
 export async function releaseReservation(tx: any, reservation: Reservation) {
   const updatedReservation = await tx.reservation.updateMany({
@@ -33,14 +33,14 @@ export async function cleanupExpiredReservations(tx: any) {
     return;
   }
 
-  const releaseIds = expired.map((reservation) => reservation.id);
+  const releaseIds = expired.map((reservation: Reservation) => reservation.id);
 
   await tx.reservation.updateMany({
     where: { id: { in: releaseIds }, status: 'PENDING' },
     data: { status: 'RELEASED' },
   });
 
-  const groups = expired.reduce((acc, reservation) => {
+  const groups = expired.reduce((acc: Map<string, { productId: number; warehouseId: number; quantity: number }>, reservation: Reservation) => {
     const key = `${reservation.productId}:${reservation.warehouseId}`;
     const existing = acc.get(key) ?? { productId: reservation.productId, warehouseId: reservation.warehouseId, quantity: 0 };
     existing.quantity += reservation.quantity;

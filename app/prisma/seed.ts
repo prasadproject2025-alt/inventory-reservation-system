@@ -1,7 +1,7 @@
 import 'dotenv/config';
-import { PrismaClient } from '../app/generated/prisma';
+import { PrismaClient } from '../app/generated/prisma/client';
 
-const prisma = new PrismaClient();
+const prisma = new (PrismaClient as any)();
 
 async function main() {
   await prisma.reservation.deleteMany();

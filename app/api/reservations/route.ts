@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   if (!inventory) return new NextResponse('Inventory not found', { status: 404 });
 
   try {
-    const reservation = await prisma.$transaction(async (tx) => {
+    const reservation = await prisma.$transaction(async (tx: any) => {
       // atomically increment reserved only if enough available
       const updated = await tx.$executeRaw`
         UPDATE "Inventory"

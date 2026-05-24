@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../../lib/prisma';
-import { releaseReservation } from '../../../../lib/reservations';
+import prisma from '../../../lib/prisma';
+import { releaseReservation } from '../../../lib/reservations';
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const reservation = await prisma.$transaction(async (tx: any) => {
