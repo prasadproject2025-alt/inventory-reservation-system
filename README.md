@@ -1,40 +1,26 @@
 # Inventory Reservation System
 
-A small Next.js inventory reservation app built with Prisma and Postgres.
+Allo Engineering take-home: a Next.js app that holds inventory during checkout, with concurrency-safe reservations and automatic expiry.
 
-## Run locally
+All application code lives in [`app/`](app/). See **[app/README.md](app/README.md)** for local setup, API details, concurrency design, expiry, idempotency, and deployment.
 
-1. Install dependencies
+## Quick start
 
 ```bash
 cd app
+cp .env.example .env
+# Edit .env — set DATABASE_URL (hosted Postgres) and CRON_SECRET
 npm install
-```
-
-2. Set the database URL
-
-Copy `.env` from the template and set `DATABASE_URL` to your hosted Postgres database.
-
-3. Push the Prisma schema and seed sample data
-
-```bash
 npx prisma db push
 npm run seed
-```
-
-4. Start the dev server
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## What’s included
 
-## Overview
-
-- `GET /api/products` lists products and available stock per warehouse.
-- `POST /api/reservations` reserves stock atomically and returns `409` if unavailable.
-- `POST /api/reservations/:id/confirm` confirms reservation or returns `410` if expired.
-- `POST /api/reservations/:id/release` releases a reservation early.
-
-The app also includes a simple reservation detail page with live countdown.
+- Product listing with per-warehouse available stock and **Reserve**
+- Checkout page with live countdown, **Confirm purchase**, and **Cancel**
+- REST API matching the exercise spec (`409` / `410` surfaced in the UI)
+- Atomic reservation logic under concurrent requests
+- Expiry via Vercel Cron + lazy cleanup on reads
+- Optional **Idempotency-Key** on reserve and confirm (Postgres-backed)
