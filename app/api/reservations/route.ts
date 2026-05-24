@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { cleanupExpiredReservations } from '../../lib/reservations';
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -9,15 +10,17 @@ export async function POST(req: Request) {
     return new NextResponse('Invalid request', { status: 400 });
   }
 
-  // find inventory row
-  const inventory = await prisma.inventory.findUnique({
-    where: { productId_warehouseId: { productId: Number(productId), warehouseId: Number(warehouseId) } },
-  });
-  if (!inventory) return new NextResponse('Inventory not found', { status: 404 });
-
   try {
     const reservation = await prisma.$transaction(async (tx: any) => {
-      // atomically increment reserved only if enough available
+      await cleanupExpiredReservations(tx);
+
+      const inventory = await tx.inventory.findUnique({
+        where: { productId_warehouseId: { productId: Number(productId), warehouseId: Number(warehouseId) } },
+      });
+      if (!inventory) {
+        throw new Error('NOT_FOUND');
+      }
+
       const updated = await tx.$executeRaw`
         UPDATE "Inventory"
         SET "reserved" = "reserved" + ${qty}
@@ -46,6 +49,9 @@ export async function POST(req: Request) {
   } catch (err: any) {
     if (err.message === 'INSUFFICIENT') {
       return new NextResponse('Not enough stock', { status: 409 });
+    }
+    if (err.message === 'NOT_FOUND') {
+      return new NextResponse('Inventory not found', { status: 404 });
     }
     console.error(err);
     return new NextResponse('Internal error', { status: 500 });

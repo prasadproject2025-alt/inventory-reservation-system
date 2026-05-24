@@ -42,7 +42,8 @@ Open [http://localhost:3000](http://localhost:3000).
 This app uses lazy cleanup on web requests:
 
 - `GET /api/products` runs expired reservation cleanup before returning inventory.
-- `GET /api/reservations/:id` also checks and releases expired reservations.
+- `POST /api/reservations` also cleans up expired reservations before reserving new stock.
+- `GET /api/reservations/:id` checks and releases expired reservations during detail lookup.
 
 That keeps stock accurate without requiring a separate worker or scheduler.
 
