@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { cleanupExpiredReservations } from '../../lib/reservations';
 
 export async function GET() {
-  const inventories = await prisma.inventory.findMany({
-    include: { product: true, warehouse: true },
+  const inventories = await prisma.$transaction(async (tx) => {
+    await cleanupExpiredReservations(tx);
+
+    return tx.inventory.findMany({
+      include: { product: true, warehouse: true },
+    });
   });
 
-  // group by product
   const productsMap = new Map<string, any>();
 
   for (const inv of inventories) {

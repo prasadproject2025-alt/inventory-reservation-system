@@ -1,38 +1,54 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
+import { releaseReservation } from '../../../../lib/reservations';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
-  const r = await prisma.reservation.findUnique({ where: { id } });
-  if (!r) return new NextResponse('Not found', { status: 404 });
+  const reservation = await prisma.$transaction(async (tx) => {
+    const r = await tx.reservation.findUnique({ where: { id } });
+    if (!r) return null;
 
-  const now = new Date();
-  if (r.expiresAt < now) {
+    if (r.status === 'PENDING' && r.expiresAt < new Date()) {
+      await releaseReservation(tx, r);
+      return { ...r, status: 'RELEASED' };
+    }
+
+    return r;
+  });
+
+  if (!reservation) return new NextResponse('Not found', { status: 404 });
+  if (reservation.status === 'RELEASED') {
     return new NextResponse('Reservation expired', { status: 410 });
   }
-  if (r.status !== 'PENDING') {
+  if (reservation.status !== 'PENDING') {
     return new NextResponse('Invalid reservation state', { status: 400 });
   }
 
   try {
     await prisma.$transaction(async (tx) => {
-      // decrement total and reserved atomically only if enough reserved/total exists
+      const updateCount = await tx.reservation.updateMany({
+        where: { id, status: 'PENDING' },
+        data: { status: 'CONFIRMED' },
+      });
+
+      if (updateCount.count === 0) {
+        throw new Error('RESERVATION_STATE_CHANGED');
+      }
+
       const updated = await tx.$executeRaw`
         UPDATE "Inventory"
-        SET "reserved" = "reserved" - ${r.quantity}, "total" = "total" - ${r.quantity}
-        WHERE "productId" = ${r.productId} AND "warehouseId" = ${r.warehouseId} AND ("reserved" >= ${r.quantity}) AND ("total" >= ${r.quantity});
+        SET "reserved" = "reserved" - ${reservation.quantity}, "total" = "total" - ${reservation.quantity}
+        WHERE "productId" = ${reservation.productId} AND "warehouseId" = ${reservation.warehouseId} AND ("reserved" >= ${reservation.quantity}) AND ("total" >= ${reservation.quantity});
       `;
 
       if (Number(updated) === 0) {
-        throw new Error('INSUFFICIENT');
+        throw new Error('INVENTORY_MISMATCH');
       }
-
-      await tx.reservation.update({ where: { id }, data: { status: 'CONFIRMED' } });
     });
 
     return new NextResponse('Confirmed', { status: 200 });
   } catch (err: any) {
-    if (err.message === 'INSUFFICIENT') {
+    if (err.message === 'INVENTORY_MISMATCH' || err.message === 'RESERVATION_STATE_CHANGED') {
       return new NextResponse('Inventory state invalid', { status: 409 });
     }
     console.error(err);

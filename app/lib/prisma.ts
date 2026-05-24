@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '../app/generated/prisma';
 
 declare global {
   // allow global prisma across hot-reloads in development
