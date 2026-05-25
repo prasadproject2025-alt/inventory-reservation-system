@@ -4,11 +4,7 @@
 
 [https://allo-inventory-beta.vercel.app?_vercel_share=5Yl4GveiHXzVpAkUzSv7F1JZ0vJI8q1u](https://allo-inventory-beta.vercel.app?_vercel_share=5Yl4GveiHXzVpAkUzSv7F1JZ0vJI8q1u)
 
-## GitHub Repository
 
-[https://github.com/praveenkumaran2022-dotcom/allo-inventory](https://github.com/praveenkumaran2022-dotcom/allo-inventory)
-
----
 
 # Overview
 
